@@ -117,7 +117,8 @@ function Install-Proj {
 
         $profileContent = Get-Content $profilePath -Raw
         $marker = "proj init | Out-String | Invoke-Expression"
-        if ($profileContent -notmatch [regex]::Escape($marker)) {
+        $activeMarkerPattern = "(?m)^[ \t]*(?!#)" + [regex]::Escape($marker) + "[ \t]*$"
+        if ($profileContent -notmatch $activeMarkerPattern) {
             Add-Content -Path $profilePath -Value ""
             Add-Content -Path $profilePath -Value "# proj shell integration"
             Add-Content -Path $profilePath -Value '$binPath = "$HOME\bin"'
