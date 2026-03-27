@@ -133,7 +133,7 @@ function Install-Proj {
     }
 }
 
-if ($MyInvocation.InvocationName -ne ".") {
+if ($PSCommandPath -and $MyInvocation.InvocationName -ne ".") {
     if (-not $Repo) {
         throw "Usage: .\install.ps1 -Repo <owner/repo> [-Version latest|vX.Y.Z] [-InstallDir <path>] [-Force]"
     }
