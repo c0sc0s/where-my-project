@@ -1,0 +1,5 @@
+/proj/target/
+*.zip
+*.log
+.DS_Store
+Thumbs.db
