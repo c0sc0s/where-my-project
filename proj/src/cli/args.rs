@@ -8,7 +8,7 @@ use clap::{Args, Parser, Subcommand};
 )]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -46,7 +46,7 @@ pub struct ScanArgs {
     #[arg(long, value_delimiter = ',')]
     pub paths: Option<Vec<String>>,
 
-    #[arg(long)]
+    #[arg(long, default_value = "true")]
     pub auto_alias: bool,
 
     #[arg(long)]

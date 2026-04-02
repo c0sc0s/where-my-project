@@ -29,6 +29,7 @@ where
 
     for path in paths {
         for entry in WalkDir::new(path)
+            .max_depth(20)
             .follow_links(false)
             .into_iter()
             .filter_entry(|entry| should_enter(entry))
@@ -40,32 +41,38 @@ where
 
             on_progress(entry.path(), instances.len());
 
-            let Some(repo_root) = repository_root(&entry) else {
+            if !is_project_dir(&entry) {
                 continue;
-            };
+            }
 
-            let canonical = repo_root
-                .canonicalize()
-                .unwrap_or_else(|_| repo_root.clone());
+            let dir_path = entry.path();
+            let canonical = dir_path.canonicalize().unwrap_or_else(|_| dir_path.to_path_buf());
+
             if !found_paths.insert(canonical.clone()) {
                 continue;
             }
 
-            let repo_name = git::repo_name(&repo_root)?;
-            if !watched.is_empty() && !watched.contains(repo_name.as_str()) {
+            let dir_name = canonical
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown")
+                .to_string();
+
+            if !watched.is_empty() && !watched.contains(dir_name.as_str()) {
                 continue;
             }
 
-            let branch = git::branch_name(&repo_root).ok();
+            let branch = git::branch_name(&canonical).ok();
             let clean_path = normalize_path(&canonical);
+
             instances.push(ProjectInstance {
-                repo_name,
+                repo_name: dir_name,
                 path: clean_path,
                 alias: None,
                 last_branch: branch,
                 last_check: None,
             });
-            on_progress(&repo_root, instances.len());
+            on_progress(&canonical, instances.len());
         }
     }
 
@@ -74,16 +81,34 @@ where
 }
 
 fn should_enter(entry: &DirEntry) -> bool {
-    entry.file_name().to_str() != Some(".git")
+    let name = entry.file_name().to_str().unwrap_or("");
+    name != ".git" && name != "node_modules" && name != "target" && name != ".next"
 }
 
-fn repository_root(entry: &DirEntry) -> Option<PathBuf> {
+fn is_project_dir(entry: &DirEntry) -> bool {
     let path = entry.path();
-    if git::is_git_repository(path) {
-        return Some(path.to_path_buf());
+
+    // 有 .git 的是项目
+    if path.join(".git").exists() {
+        return true;
     }
 
-    None
+    // 有 package.json 的是项目
+    if path.join("package.json").exists() {
+        return true;
+    }
+
+    // 有 Cargo.toml 的是项目
+    if path.join("Cargo.toml").exists() {
+        return true;
+    }
+
+    // 有 go.mod 的是项目
+    if path.join("go.mod").exists() {
+        return true;
+    }
+
+    false
 }
 
 fn normalize_path(path: &Path) -> String {

@@ -3,6 +3,7 @@ use colored::Colorize;
 use comfy_table::{
     modifiers::UTF8_ROUND_CORNERS, Cell, Color as TableColor, ContentArrangement, Table,
 };
+use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::{cli::args::ScanArgs, core::manager::ProjectManager, core::models::ProjectInstance};
 
@@ -11,8 +12,20 @@ pub fn run(args: ScanArgs) -> Result<()> {
         return crate::tui::scan::run(args);
     }
 
+    let spinner = ProgressBar::new_spinner();
+    spinner.set_style(
+        ProgressStyle::default_spinner()
+            .template("{spinner:.cyan} {msg}")
+            .unwrap()
+            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+    );
+    spinner.set_message("Scanning for repositories...");
+    spinner.enable_steady_tick(std::time::Duration::from_millis(80));
+
     let mut manager = ProjectManager::load()?;
     let instances = manager.scan(args.paths, args.auto_alias)?;
+
+    spinner.finish_and_clear();
 
     if instances.is_empty() {
         println!("{}", "No repositories found.".yellow());

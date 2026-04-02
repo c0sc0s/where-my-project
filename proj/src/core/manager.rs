@@ -87,7 +87,8 @@ impl ProjectManager {
             on_progress,
         )?;
 
-        let alias_by_path: HashMap<String, String> = self
+        // 加载手动设置的 alias（通过 proj alias 命令设置的）
+        let manual_alias_by_path: HashMap<String, String> = self
             .config
             .instances
             .iter()
@@ -101,20 +102,28 @@ impl ProjectManager {
 
         let mut merged = Vec::new();
         let mut existing_aliases = HashSet::new();
+        let mut instances_to_alias = Vec::new();
 
         for mut instance in scanned {
             instance.last_check = Some(Utc::now());
-            instance.alias = alias_by_path.get(&instance.path).cloned();
 
-            if auto_alias && instance.alias.is_none() {
-                instance.alias = Some(self.generate_auto_alias(&instance, &existing_aliases));
+            if auto_alias {
+                // auto_alias 模式：所有实例都重新生成，确保全局最优
+                instances_to_alias.push(instance);
+            } else {
+                // 非 auto_alias 模式：保留已有 alias
+                instance.alias = manual_alias_by_path.get(&instance.path).cloned();
+                if let Some(alias) = &instance.alias {
+                    existing_aliases.insert(alias.clone());
+                }
+                merged.push(instance);
             }
+        }
 
-            if let Some(alias) = &instance.alias {
-                existing_aliases.insert(alias.clone());
-            }
-
-            merged.push(instance);
+        // 批量生成 alias
+        if !instances_to_alias.is_empty() {
+            let generated = self.generate_smart_aliases(&instances_to_alias, &existing_aliases);
+            merged.extend(generated);
         }
 
         self.config.instances = merged.clone();
@@ -208,6 +217,31 @@ function projlist {
     }
 }
 
+Register-ArgumentCompleter -CommandName projcd -ParameterName name -ScriptBlock {
+    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+    $aliases = proj alias --list 2>$null | ForEach-Object {
+        if ($_ -match '^\[(\d+)\]\s+(\S+)\s+->\s+(.+)$') {
+            [PSCustomObject]@{
+                Index = $matches[1]
+                Alias = $matches[2]
+                Path = $matches[3]
+            }
+        }
+    }
+
+    $aliases | Where-Object {
+        $_.Alias -like "$wordToComplete*" -and $_.Alias -ne '-'
+    } | ForEach-Object {
+        [System.Management.Automation.CompletionResult]::new(
+            $_.Alias,
+            $_.Alias,
+            'ParameterValue',
+            $_.Path
+        )
+    }
+}
+
 Set-Alias -Name pcd -Value projcd
 Set-Alias -Name pl -Value projlist"#
             .to_string()
@@ -241,31 +275,97 @@ Set-Alias -Name pl -Value projlist"#
         self.config.scan_paths.dedup();
     }
 
-    fn generate_auto_alias(
+    fn generate_smart_aliases(
         &self,
-        instance: &ProjectInstance,
+        instances: &[ProjectInstance],
         existing: &HashSet<String>,
-    ) -> String {
-        let branch = instance
-            .last_branch
-            .as_deref()
-            .map(sanitize_alias)
-            .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| sanitize_alias(&instance.repo_name));
+    ) -> Vec<ProjectInstance> {
+        let mut used = existing.clone();
 
-        if !existing.contains(&branch) {
-            return branch;
+        // 第 1 步：按 repo_name 分组
+        let mut groups: HashMap<String, Vec<usize>> = HashMap::new();
+        let bases: Vec<String> = instances
+            .iter()
+            .map(|inst| sanitize_alias(&inst.repo_name))
+            .collect();
+
+        for (i, base) in bases.iter().enumerate() {
+            groups.entry(base.clone()).or_default().push(i);
         }
 
-        let repo_prefix = sanitize_alias(&instance.repo_name);
-        let mut index = 2;
-        loop {
-            let candidate = format!("{repo_prefix}-{index}");
-            if !existing.contains(&candidate) {
-                return candidate;
+        // 为每个 instance 生成 alias
+        let mut aliases = vec![String::new(); instances.len()];
+
+        for (base, indices) in &groups {
+            if indices.len() == 1 {
+                // repo 名唯一，直接用
+                let alias = ensure_unique(base, &used);
+                used.insert(alias.clone());
+                aliases[indices[0]] = alias;
+                continue;
             }
-            index += 1;
+
+            // repo 名重复 → 按 branch 消歧
+            let mut branch_groups: HashMap<String, Vec<usize>> = HashMap::new();
+            for &i in indices {
+                let branch_key = instances[i]
+                    .last_branch
+                    .as_ref()
+                    .map(|b| sanitize_alias(b))
+                    .unwrap_or_default();
+                branch_groups.entry(branch_key).or_default().push(i);
+            }
+
+            for (branch, branch_indices) in &branch_groups {
+                if branch_indices.len() == 1 {
+                    // 同 repo 名内 branch 唯一
+                    let candidate = if branch.is_empty() {
+                        base.clone()
+                    } else {
+                        format!("{}-{}", base, branch)
+                    };
+                    let alias = ensure_unique(&candidate, &used);
+                    used.insert(alias.clone());
+                    aliases[branch_indices[0]] = alias;
+                    continue;
+                }
+
+                // 同 repo 名 + 同 branch → 用目录特征消歧
+                let paths: Vec<&str> = branch_indices
+                    .iter()
+                    .map(|&i| instances[i].path.as_str())
+                    .collect();
+                let dir_keys = extract_distinguishing_dirs(&paths);
+
+                for (j, &i) in branch_indices.iter().enumerate() {
+                    let dir_key = &dir_keys[j];
+                    let candidate = if branch.is_empty() {
+                        if dir_key.is_empty() {
+                            base.clone()
+                        } else {
+                            format!("{}-{}", base, dir_key)
+                        }
+                    } else if dir_key.is_empty() {
+                        format!("{}-{}", base, branch)
+                    } else {
+                        format!("{}-{}-{}", base, branch, dir_key)
+                    };
+                    let alias = ensure_unique(&candidate, &used);
+                    used.insert(alias.clone());
+                    aliases[i] = alias;
+                }
+            }
         }
+
+        instances
+            .iter()
+            .zip(aliases)
+            .map(|(inst, alias)| {
+                let mut result = inst.clone();
+                result.alias = Some(alias);
+                result
+            })
+            .collect()
     }
 
     fn ensure_alias_available(&self, alias: &str, current_target: Option<&str>) -> Result<()> {
@@ -322,4 +422,72 @@ fn sanitize_alias(value: &str) -> String {
         .filter(|segment| !segment.is_empty())
         .collect::<Vec<_>>()
         .join("-")
+}
+
+/// 给定一组路径，为每个路径提取一个能区分彼此的目录名。
+/// 从路径末尾往前找，跳过 repo 名本身和通用目录名，
+/// 取第一个在组内有区分度的目录段。
+fn extract_distinguishing_dirs(paths: &[&str]) -> Vec<String> {
+    const SKIP_NAMES: &[&str] = &[
+        "packages", "apps", "src", "lib", "workspace", "bytedance", "node_modules",
+    ];
+
+    // 把每个路径拆成段（去掉最后一段 repo 名）
+    let segments: Vec<Vec<String>> = paths
+        .iter()
+        .map(|path| {
+            let parts: Vec<&str> = path.split(['\\', '/']).filter(|s| !s.is_empty()).collect();
+            if parts.len() < 2 {
+                return vec![];
+            }
+            // 去掉最后一段（repo 名本身）
+            parts[..parts.len() - 1]
+                .iter()
+                .rev()
+                .filter(|p| !SKIP_NAMES.contains(p))
+                .map(|p| sanitize_alias(p))
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
+        .collect();
+
+    // 从最近的父目录开始，找到第一层能区分所有路径的目录
+    let max_depth = segments.iter().map(|s| s.len()).max().unwrap_or(0);
+
+    for depth in 0..max_depth {
+        let keys: Vec<String> = segments
+            .iter()
+            .map(|segs| segs.get(depth).cloned().unwrap_or_default())
+            .collect();
+
+        // 检查这一层是否能区分所有路径
+        let unique_keys: HashSet<&String> = keys.iter().collect();
+        if unique_keys.len() == keys.len() {
+            return keys;
+        }
+    }
+
+    // 无法通过单层目录区分，组合最近两层
+    segments
+        .iter()
+        .map(|segs| {
+            let parts: Vec<&str> = segs.iter().take(2).map(String::as_str).collect();
+            parts.join("-")
+        })
+        .collect()
+}
+
+/// 确保 alias 唯一：如果候选值已被占用，加数字后缀
+fn ensure_unique(candidate: &str, used: &HashSet<String>) -> String {
+    if !used.contains(candidate) {
+        return candidate.to_string();
+    }
+    let mut idx = 2;
+    loop {
+        let suffixed = format!("{}-{}", candidate, idx);
+        if !used.contains(&suffixed) {
+            return suffixed;
+        }
+        idx += 1;
+    }
 }

@@ -63,7 +63,7 @@ fn draw(frame: &mut Frame, app: &mut App) {
         .constraints([
             Constraint::Length(3),
             Constraint::Min(5),
-            Constraint::Length(2),
+            Constraint::Length(3),
         ])
         .split(area);
 
@@ -86,18 +86,16 @@ fn draw(frame: &mut Frame, app: &mut App) {
         let rows = app.filtered_rows();
         let table = Table::new(rows)
             .header(
-                Row::new(["Alias", "Repo", "Branch", "Status", "Path"]).style(
+                Row::new(["Alias", "Branch", "Path"]).style(
                     Style::default()
                         .fg(Color::Cyan)
                         .add_modifier(Modifier::BOLD),
                 ),
             )
             .widths(&[
-                Constraint::Length(18),
-                Constraint::Length(18),
-                Constraint::Length(18),
-                Constraint::Length(18),
-                Constraint::Min(24),
+                Constraint::Length(25),
+                Constraint::Length(25),
+                Constraint::Percentage(100),
             ])
             .block(Block::default().borders(Borders::ALL).title("Results"))
             .highlight_style(
@@ -110,7 +108,12 @@ fn draw(frame: &mut Frame, app: &mut App) {
         frame.render_stateful_widget(table, chunks[1], &mut app.table_state);
     }
 
-    let footer = Paragraph::new("↑/↓ move  Enter select  / search  r refresh  q/Esc quit")
+    let footer_text = if let Some(path) = app.selected_path() {
+        format!("↑/↓ move  Enter select  / search  r refresh  q/Esc quit\n{}", path)
+    } else {
+        "↑/↓ move  Enter select  / search  r refresh  q/Esc quit".to_string()
+    };
+    let footer = Paragraph::new(footer_text)
         .block(Block::default().borders(Borders::ALL));
     frame.render_widget(footer, chunks[2]);
 
@@ -143,15 +146,49 @@ fn centered_rect(width_percent: u16, height: u16, area: Rect) -> Rect {
         .split(vertical[1])[1]
 }
 
-fn truncate(value: &str, max_chars: usize) -> String {
-    let chars: Vec<char> = value.chars().collect();
-    if chars.len() <= max_chars {
-        return value.to_string();
+fn shorten_path_from_end(path: &str, max_len: usize) -> String {
+    if path.len() <= max_len {
+        return path.to_string();
+    }
+    let skip = path.len() - (max_len - 3);
+    format!("...{}", &path[skip..])
+}
+
+fn find_common_prefix(paths: &[&str]) -> String {
+    if paths.is_empty() {
+        return String::new();
+    }
+    if paths.len() == 1 {
+        return String::new();
     }
 
-    let take = max_chars.saturating_sub(3);
-    let truncated = chars.into_iter().take(take).collect::<String>();
-    format!("{truncated}...")
+    let first = paths[0].as_bytes();
+    let mut prefix_len = 0;
+
+    'outer: for i in 0..first.len() {
+        let ch = first[i];
+        for path in &paths[1..] {
+            if i >= path.len() || path.as_bytes()[i] != ch {
+                break 'outer;
+            }
+        }
+        prefix_len = i + 1;
+    }
+
+    // 回退到最后一个路径分隔符
+    let prefix = &paths[0][..prefix_len];
+    if let Some(pos) = prefix.rfind(|c| c == '\\' || c == '/') {
+        paths[0][..pos].to_string()
+    } else {
+        String::new()
+    }
+}
+
+fn truncate(value: &str, max_chars: usize) -> String {
+    if value.len() <= max_chars {
+        return value.to_string();
+    }
+    format!("...{}", &value[value.len().saturating_sub(max_chars - 3)..])
 }
 
 fn format_status(status: &InstanceStatus) -> String {
@@ -258,21 +295,30 @@ impl App {
     }
 
     fn filtered_rows(&self) -> Vec<Row<'static>> {
+        let paths: Vec<&str> = self.filtered
+            .iter()
+            .filter_map(|index| self.statuses.get(*index))
+            .map(|s| s.instance.path.as_str())
+            .collect();
+
+        let common_prefix = find_common_prefix(&paths);
+
         self.filtered
             .iter()
             .filter_map(|index| self.statuses.get(*index))
             .map(|status| {
                 let alias = status.instance.alias.as_deref().unwrap_or("-");
-                let repo = status.instance.repo_name.as_str();
                 let branch = status.git_status.branch.as_str();
-                let path = status.instance.path.as_str();
+                let path = if common_prefix.is_empty() {
+                    status.instance.path.clone()
+                } else {
+                    format!("~/{}", &status.instance.path[common_prefix.len()..].trim_start_matches('\\').trim_start_matches('/'))
+                };
 
                 Row::new(vec![
-                    Cell::from(truncate(alias, 16)),
-                    Cell::from(truncate(repo, 16)),
-                    Cell::from(truncate(branch, 16)),
-                    Cell::from(truncate(&format_status(status), 16)),
-                    Cell::from(truncate(path, 80)),
+                    Cell::from(alias.to_string()),
+                    Cell::from(branch.to_string()),
+                    Cell::from(path),
                 ])
             })
             .collect()

@@ -88,35 +88,32 @@ The binary will be created at:
 
 ## Usage
 
-Watch a repository name:
+**Quick Start:**
 
 ```powershell
-proj watch live_studio_mono
-```
-
-Scan directories for clones:
-
-```powershell
+# Scan and auto-generate smart aliases (parent-dir + repo-name)
 proj scan --paths D:\code,C:\work --auto-alias
-```
 
-Inspect tracked projects:
+# Open TUI picker (no command needed!)
+proj
 
-```powershell
-proj status
-```
-
-Open the TUI picker and jump into a project:
-
-```powershell
+# Or use the shell alias
 pl
 ```
 
-Jump directly by alias or index:
+**Jump to projects:**
 
 ```powershell
-pcd myproj
-pcd 1
+pcd work-myrepo    # by alias
+pcd 1              # by index
+```
+
+**Other commands:**
+
+```powershell
+proj watch <repo>  # Watch specific repos
+proj status        # Show all projects
+proj alias 1 name  # Set custom alias
 ```
 
 ## Release
