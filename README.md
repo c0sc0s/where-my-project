@@ -39,6 +39,14 @@ That command:
 
 Run the same command again later to upgrade.
 
+### Uninstall
+
+```powershell
+irm https://raw.githubusercontent.com/c0sc0s/where-my-project/main/install.ps1 | iex; Uninstall-Proj
+```
+
+Removes `proj.exe`, `~/.proj.json`, and the profile integration block.
+
 ### Option 1: GitHub Release
 
 Download the latest release asset, extract `proj.exe`, and put it in `~/bin`.

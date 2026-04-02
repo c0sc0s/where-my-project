@@ -134,6 +134,63 @@ function Install-Proj {
     }
 }
 
+function Uninstall-Proj {
+    [CmdletBinding()]
+    param(
+        [string]$InstallDir = "$HOME\bin"
+    )
+
+    $ErrorActionPreference = "Stop"
+
+    # Remove binary
+    $binary = Join-Path $InstallDir "proj.exe"
+    if (Test-Path $binary) {
+        Remove-Item -LiteralPath $binary -Force
+        Write-Host "Removed $binary" -ForegroundColor Green
+    } else {
+        Write-Host "proj.exe not found at $binary" -ForegroundColor Yellow
+    }
+
+    # Remove data file
+    $dataFile = "$HOME\.proj.json"
+    if (Test-Path $dataFile) {
+        Remove-Item -LiteralPath $dataFile -Force
+        Write-Host "Removed $dataFile" -ForegroundColor Green
+    }
+
+    # Remove profile integration block
+    $profilePath = $PROFILE.CurrentUserCurrentHost
+    if (Test-Path $profilePath) {
+        $lines = Get-Content $profilePath
+        $startIndex = -1
+        $endIndex = -1
+
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^\s*#\s*(proj shell integration|>>>\s*proj)') {
+                $startIndex = $i
+            }
+            if ($startIndex -ge 0 -and $lines[$i] -match 'proj init \| Out-String \| Invoke-Expression') {
+                $endIndex = $i
+                break
+            }
+        }
+
+        if ($startIndex -ge 0 -and $endIndex -ge $startIndex) {
+            # Trim one leading blank line before the block if present
+            if ($startIndex -gt 0 -and $lines[$startIndex - 1].Trim() -eq '') {
+                $startIndex--
+            }
+            $kept = @($lines[0..($startIndex - 1)]) + @($lines[($endIndex + 1)..($lines.Count - 1)])
+            Set-Content -Path $profilePath -Value $kept
+            Write-Host "Removed proj integration from $profilePath" -ForegroundColor Green
+        } else {
+            Write-Host "No proj integration found in profile" -ForegroundColor Yellow
+        }
+    }
+
+    Write-Host "Uninstall complete. Reload your profile with: . `$PROFILE" -ForegroundColor Cyan
+}
+
 if ($PSCommandPath -and $MyInvocation.InvocationName -ne ".") {
     if (-not $Repo) {
         throw "Usage: .\install.ps1 -Repo <owner/repo> [-Version latest|vX.Y.Z] [-InstallDir <path>] [-Force]"
