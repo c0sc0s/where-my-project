@@ -58,7 +58,16 @@ where
                 .unwrap_or("unknown")
                 .to_string();
 
-            if !watched.is_empty() && !watched.contains(dir_name.as_str()) {
+            // For git worktrees, .git is a file pointing back to the main repo.
+            // The folder name differs from the actual repo name, so we must resolve it.
+            let is_worktree = canonical.join(".git").is_file();
+            let repo_name = if is_worktree {
+                git::repo_name(&canonical).unwrap_or_else(|_| dir_name.clone())
+            } else {
+                dir_name
+            };
+
+            if !watched.is_empty() && !watched.contains(repo_name.as_str()) {
                 continue;
             }
 
@@ -66,7 +75,7 @@ where
             let clean_path = normalize_path(&canonical);
 
             instances.push(ProjectInstance {
-                repo_name: dir_name,
+                repo_name,
                 path: clean_path,
                 alias: None,
                 last_branch: branch,
