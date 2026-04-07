@@ -125,6 +125,90 @@ function Get-ReleaseInfo {
     }
 }
 
+function Remove-InstallDirFromPath {
+    param([string]$InstallDir)
+
+    if (-not $env:PATH) {
+        return
+    }
+
+    $normalizedInstallDir = [System.IO.Path]::GetFullPath($InstallDir).TrimEnd("\")
+    $pathEntries = $env:PATH -split ";" | Where-Object { $_ }
+    $keptEntries = New-Object System.Collections.Generic.List[string]
+
+    foreach ($entry in $pathEntries) {
+        $normalizedEntry = $null
+
+        try {
+            $normalizedEntry = [System.IO.Path]::GetFullPath($entry).TrimEnd("\")
+        } catch {
+            $normalizedEntry = $entry.TrimEnd("\")
+        }
+
+        if ($normalizedEntry -ieq $normalizedInstallDir) {
+            continue
+        }
+
+        $keptEntries.Add($entry)
+    }
+
+    $env:PATH = ($keptEntries | Select-Object -Unique) -join ";"
+}
+
+function Remove-ManagedProfileIntegration {
+    param([string]$ProfilePath)
+
+    if (-not (Test-Path $ProfilePath)) {
+        return $false
+    }
+
+    $lines = @(Get-Content $ProfilePath)
+    if ($lines.Count -eq 0) {
+        return $false
+    }
+
+    $startPattern = '^\s*#\s*proj shell integration\s*$'
+    $endPattern = '^\s*proj init \| Out-String \| Invoke-Expression\s*$'
+    $kept = New-Object System.Collections.Generic.List[string]
+    $removed = $false
+
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -notmatch $startPattern) {
+            $kept.Add($lines[$i])
+            continue
+        }
+
+        $removed = $true
+
+        if ($kept.Count -gt 0 -and [string]::IsNullOrWhiteSpace($kept[$kept.Count - 1])) {
+            $kept.RemoveAt($kept.Count - 1)
+        }
+
+        while ($i -lt $lines.Count -and $lines[$i] -notmatch $endPattern) {
+            $i++
+        }
+    }
+
+    if (-not $removed) {
+        return $false
+    }
+
+    Set-Content -Path $ProfilePath -Value $kept
+    return $true
+}
+
+function Remove-CurrentSessionIntegration {
+    param([string]$InstallDir)
+
+    foreach ($scopePath in @("Function:projcd", "Function:projlist", "Alias:pcd", "Alias:pl")) {
+        if (Test-Path $scopePath) {
+            Remove-Item -LiteralPath $scopePath -Force
+        }
+    }
+
+    Remove-InstallDirFromPath -InstallDir $InstallDir
+}
+
 function Install-Proj {
     [CmdletBinding()]
     param(
@@ -225,6 +309,11 @@ function Uninstall-Proj {
         Write-Host "proj.exe not found at $binary" -ForegroundColor Yellow
     }
 
+    if ((Test-Path $InstallDir) -and -not (Get-ChildItem -LiteralPath $InstallDir -Force | Select-Object -First 1)) {
+        Remove-Item -LiteralPath $InstallDir -Force
+        Write-Host "Removed empty install directory $InstallDir" -ForegroundColor Green
+    }
+
     # Remove data file
     $dataFile = "$HOME\.proj.json"
     if (Test-Path $dataFile) {
@@ -234,35 +323,15 @@ function Uninstall-Proj {
 
     # Remove profile integration block
     $profilePath = $PROFILE.CurrentUserCurrentHost
-    if (Test-Path $profilePath) {
-        $lines = Get-Content $profilePath
-        $startIndex = -1
-        $endIndex = -1
-
-        for ($i = 0; $i -lt $lines.Count; $i++) {
-            if ($lines[$i] -match '^\s*#\s*(proj shell integration|>>>\s*proj)') {
-                $startIndex = $i
-            }
-            if ($startIndex -ge 0 -and $lines[$i] -match 'proj init \| Out-String \| Invoke-Expression') {
-                $endIndex = $i
-                break
-            }
-        }
-
-        if ($startIndex -ge 0 -and $endIndex -ge $startIndex) {
-            # Trim one leading blank line before the block if present
-            if ($startIndex -gt 0 -and $lines[$startIndex - 1].Trim() -eq '') {
-                $startIndex--
-            }
-            $kept = @($lines[0..($startIndex - 1)]) + @($lines[($endIndex + 1)..($lines.Count - 1)])
-            Set-Content -Path $profilePath -Value $kept
-            Write-Host "Removed proj integration from $profilePath" -ForegroundColor Green
-        } else {
-            Write-Host "No proj integration found in profile" -ForegroundColor Yellow
-        }
+    if (Remove-ManagedProfileIntegration -ProfilePath $profilePath) {
+        Write-Host "Removed proj integration from $profilePath" -ForegroundColor Green
+    } elseif (Test-Path $profilePath) {
+        Write-Host "No proj integration found in profile" -ForegroundColor Yellow
     }
 
-    Write-Host "Uninstall complete. Reload your profile with: . `$PROFILE" -ForegroundColor Cyan
+    Remove-CurrentSessionIntegration -InstallDir $InstallDir
+    Write-Host "Removed proj commands from the current PowerShell session" -ForegroundColor Green
+    Write-Host "Uninstall complete. Open a new PowerShell session if any cached completion still appears." -ForegroundColor Cyan
 }
 
 if ($PSCommandPath -and $MyInvocation.InvocationName -ne ".") {

@@ -45,7 +45,7 @@ Run the same command again later to upgrade.
 irm https://raw.githubusercontent.com/c0sc0s/where-my-project/main/install.ps1 | iex; Uninstall-Proj
 ```
 
-Removes `proj.exe`, `~/.proj.json`, and the profile integration block.
+Removes `proj.exe`, `~/.proj.json`, the profile integration block, and the current PowerShell session aliases/functions. If the install directory becomes empty, it is removed too.
 
 ### Option 1: GitHub Release
 
