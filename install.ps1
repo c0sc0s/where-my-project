@@ -15,6 +15,21 @@ function Get-NormalizedVersion {
     return $Value.Trim().TrimStart("v", "V")
 }
 
+function Get-ReleaseTag {
+    param([string]$Version)
+
+    if (-not $Version -or $Version -eq "latest") {
+        return $null
+    }
+
+    $trimmedVersion = $Version.Trim()
+    if ($trimmedVersion.StartsWith("v", [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $trimmedVersion
+    }
+
+    return "v$trimmedVersion"
+}
+
 function Get-InstalledProjVersion {
     param([string]$BinaryPath)
 
@@ -37,6 +52,77 @@ function Get-InstalledProjVersion {
     }
 
     return $null
+}
+
+function Get-RedirectLocation {
+    param([string]$Uri)
+
+    $request = [System.Net.HttpWebRequest]::Create($Uri)
+    $request.Method = "HEAD"
+    $request.AllowAutoRedirect = $false
+    $request.UserAgent = "proj-installer"
+
+    $response = $null
+
+    try {
+        $response = $request.GetResponse()
+    } catch [System.Net.WebException] {
+        if (-not $_.Exception.Response) {
+            throw
+        }
+
+        $response = $_.Exception.Response
+    }
+
+    try {
+        $location = $response.Headers["Location"]
+        if (-not $location) {
+            throw "Could not resolve redirect location for $Uri."
+        }
+
+        return $location
+    } finally {
+        $response.Close()
+    }
+}
+
+function Get-ReleaseInfo {
+    param(
+        [string]$Repo,
+        [string]$Version
+    )
+
+    $assetName = "proj-windows-x86_64.zip"
+
+    if ($Version -eq "latest") {
+        $latestReleaseUrl = "https://github.com/$Repo/releases/latest"
+        Write-Host "Resolving latest release from $latestReleaseUrl" -ForegroundColor Cyan
+
+        $location = Get-RedirectLocation -Uri $latestReleaseUrl
+        $resolvedUri = [System.Uri]::new([System.Uri]$latestReleaseUrl, $location)
+
+        if ($resolvedUri.AbsolutePath -notmatch "/releases/tag/(?<tag>[^/]+)$") {
+            throw "Could not determine the latest release tag from $latestReleaseUrl."
+        }
+
+        $releaseTag = $Matches["tag"]
+
+        return [PSCustomObject]@{
+            Tag         = $releaseTag
+            Version     = Get-NormalizedVersion $releaseTag
+            AssetName   = $assetName
+            DownloadUrl = "https://github.com/$Repo/releases/latest/download/$assetName"
+        }
+    }
+
+    $releaseTag = Get-ReleaseTag -Version $Version
+
+    return [PSCustomObject]@{
+        Tag         = $releaseTag
+        Version     = Get-NormalizedVersion $releaseTag
+        AssetName   = $assetName
+        DownloadUrl = "https://github.com/$Repo/releases/download/$releaseTag/$assetName"
+    }
 }
 
 function Install-Proj {
@@ -63,20 +149,8 @@ function Install-Proj {
         New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
     }
 
-    $releaseApi = if ($Version -eq "latest") {
-        "https://api.github.com/repos/$Repo/releases/latest"
-    } else {
-        "https://api.github.com/repos/$Repo/releases/tags/$Version"
-    }
-
-    Write-Host "Fetching release metadata from $releaseApi" -ForegroundColor Cyan
-    $release = Invoke-RestMethod -Uri $releaseApi -Headers @{ "User-Agent" = "proj-installer" }
-    $releaseVersion = Get-NormalizedVersion $release.tag_name
-
-    $asset = $release.assets | Where-Object { $_.name -eq "proj-windows-x86_64.zip" } | Select-Object -First 1
-    if (-not $asset) {
-        throw "Release asset 'proj-windows-x86_64.zip' not found."
-    }
+    $release = Get-ReleaseInfo -Repo $Repo -Version $Version
+    $releaseVersion = $release.Version
 
     $destination = Join-Path $InstallDir "proj.exe"
     $installedVersion = Get-InstalledProjVersion -BinaryPath $destination
@@ -87,15 +161,15 @@ function Install-Proj {
     }
 
     $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("proj-install-" + [Guid]::NewGuid().ToString("N"))
-    $zipPath = Join-Path $tempDir $asset.name
+    $zipPath = Join-Path $tempDir $release.AssetName
     $extractDir = Join-Path $tempDir "extract"
 
     New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
     New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
 
     try {
-        Write-Host "Downloading $($asset.name)" -ForegroundColor Cyan
-        Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath -Headers @{ "User-Agent" = "proj-installer" }
+        Write-Host "Downloading $($release.AssetName)" -ForegroundColor Cyan
+        Invoke-WebRequest -Uri $release.DownloadUrl -OutFile $zipPath -Headers @{ "User-Agent" = "proj-installer" }
 
         Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
 
@@ -115,7 +189,7 @@ function Install-Proj {
             New-Item -ItemType File -Path $profilePath -Force | Out-Null
         }
 
-        $profileContent = Get-Content $profilePath -Raw
+        $profileContent = [string](Get-Content $profilePath -Raw)
         $marker = "proj init | Out-String | Invoke-Expression"
         $activeMarkerPattern = "(?m)^[ \t]*(?!#)" + [regex]::Escape($marker) + "[ \t]*$"
         if ($profileContent -notmatch $activeMarkerPattern) {
