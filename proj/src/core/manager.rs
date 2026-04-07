@@ -180,6 +180,7 @@ Set-Alias -Name pl -Value projlist"#
         let mut roots = self.configured_scan_roots();
 
         roots.extend(discover_workspace_roots());
+        roots.extend(discover_drive_roots());
 
         roots.push(env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
         normalize_scan_roots(roots)
@@ -273,6 +274,27 @@ fn discover_workspace_roots() -> Vec<PathBuf> {
     }
 
     normalize_scan_roots(roots)
+}
+
+fn discover_drive_roots() -> Vec<PathBuf> {
+    #[cfg(windows)]
+    {
+        let mut roots = Vec::new();
+
+        for drive in b'A'..=b'Z' {
+            let root = PathBuf::from(format!("{}:\\", drive as char));
+            if root.exists() {
+                roots.push(root);
+            }
+        }
+
+        return normalize_scan_roots(roots);
+    }
+
+    #[cfg(not(windows))]
+    {
+        Vec::new()
+    }
 }
 
 fn normalize_scan_roots(paths: Vec<PathBuf>) -> Vec<PathBuf> {

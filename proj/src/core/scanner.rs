@@ -79,7 +79,21 @@ fn should_enter(entry: &DirEntry) -> bool {
     let name = entry.file_name().to_str().unwrap_or("");
     !matches!(
         name,
-        ".git" | "node_modules" | "target" | ".next" | "dist" | "dist_sec" | "build" | "release"
+        ".git"
+            | "node_modules"
+            | "target"
+            | ".next"
+            | "dist"
+            | "dist_sec"
+            | "build"
+            | "release"
+            | "Windows"
+            | "Program Files"
+            | "Program Files (x86)"
+            | "ProgramData"
+            | "AppData"
+            | "$Recycle.Bin"
+            | "System Volume Information"
     )
 }
 
