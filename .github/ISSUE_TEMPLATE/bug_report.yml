@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a defect, regression, or confusing behavior.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug report. Please include enough detail for someone else to reproduce the issue.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened, and what did you expect to happen instead?
+      placeholder: A short description of the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Share the exact commands, paths, or sequence that triggers the issue.
+      placeholder: |
+        1. Run `proj scan ...`
+        2. Run `proj status`
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS version, PowerShell version, and `proj --version` if available.
+      placeholder: Windows 11, PowerShell 7.5, proj 0.2.6
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Paste error messages, screenshots, or terminal output if helpful.
+      render: shell
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Anything else that might help explain the issue?

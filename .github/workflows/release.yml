@@ -36,7 +36,9 @@ jobs:
           New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
           Copy-Item -LiteralPath "proj\target\release\proj.exe" -Destination (Join-Path $bundleDir "proj.exe") -Force
           Copy-Item -LiteralPath "README.md" -Destination (Join-Path $bundleDir "README.md") -Force
+          Copy-Item -LiteralPath "LICENSE" -Destination (Join-Path $bundleDir "LICENSE") -Force
           Copy-Item -LiteralPath "install.ps1" -Destination (Join-Path $bundleDir "install.ps1") -Force
+          Copy-Item -LiteralPath "assets" -Destination (Join-Path $bundleDir "assets") -Recurse -Force
           Compress-Archive -Path "$bundleDir\*" -DestinationPath "dist\proj-windows-x86_64.zip" -Force
 
       - name: Create release

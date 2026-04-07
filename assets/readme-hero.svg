@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="840" viewBox="0 0 1200 840" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="84" y1="46" x2="1116" y2="794" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="0.52" stop-color="#F6FAFF"/>
+      <stop offset="1" stop-color="#EEF7FF"/>
+    </linearGradient>
+    <radialGradient id="glowBlue" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(302 552) rotate(29.672) scale(268 182)">
+      <stop stop-color="#9FD9FF" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#9FD9FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowPurple" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(790 456) rotate(29.672) scale(262 188)">
+      <stop stop-color="#C5B5FF" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#C5B5FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="302" y1="432" x2="901" y2="604" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8EDBFF" stop-opacity="0.18"/>
+      <stop offset="0.4" stop-color="#A2D4FF" stop-opacity="0.9"/>
+      <stop offset="0.72" stop-color="#D9CAFF" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#A8F0FF" stop-opacity="0.3"/>
+    </linearGradient>
+    <linearGradient id="glassBlue" x1="0" y1="0" x2="214" y2="210" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DDF3FF" stop-opacity="0.95"/>
+      <stop offset="0.5" stop-color="#A5D6FF" stop-opacity="0.78"/>
+      <stop offset="1" stop-color="#A9BFFF" stop-opacity="0.72"/>
+    </linearGradient>
+    <linearGradient id="glassPurple" x1="0" y1="0" x2="214" y2="210" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EAF7FF" stop-opacity="0.94"/>
+      <stop offset="0.48" stop-color="#B9CCFF" stop-opacity="0.78"/>
+      <stop offset="1" stop-color="#C8A8FF" stop-opacity="0.8"/>
+    </linearGradient>
+    <linearGradient id="folderBlue" x1="0" y1="0" x2="160" y2="164" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D9F3FF" stop-opacity="0.96"/>
+      <stop offset="0.56" stop-color="#9ED8FF" stop-opacity="0.82"/>
+      <stop offset="1" stop-color="#6FB4FF" stop-opacity="0.76"/>
+    </linearGradient>
+    <linearGradient id="folderPurple" x1="0" y1="0" x2="160" y2="164" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E7F6FF" stop-opacity="0.94"/>
+      <stop offset="0.52" stop-color="#B8D4FF" stop-opacity="0.82"/>
+      <stop offset="1" stop-color="#B582FF" stop-opacity="0.82"/>
+    </linearGradient>
+    <filter id="softBlur" x="-120" y="-120" width="1440" height="1080" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="42"/>
+    </filter>
+    <filter id="cardShadow" x="-48" y="-48" width="380" height="320" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="20" stdDeviation="18" flood-color="#86CFFF" flood-opacity="0.18"/>
+    </filter>
+    <filter id="folderShadow" x="-36" y="-36" width="260" height="240" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#91C8FF" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="840" fill="url(#bg)"/>
+  <g filter="url(#softBlur)">
+    <ellipse cx="312" cy="584" rx="168" ry="122" fill="url(#glowBlue)"/>
+    <ellipse cx="826" cy="472" rx="176" ry="132" fill="url(#glowPurple)"/>
+    <ellipse cx="612" cy="610" rx="154" ry="112" fill="#D4E5FF" fill-opacity="0.34"/>
+  </g>
+
+  <text x="600" y="118" text-anchor="middle" fill="#1B2C5B" font-family="Segoe UI, Arial, sans-serif" font-size="78" font-weight="500" letter-spacing="-1.5">Where my project</text>
+  <text x="600" y="176" text-anchor="middle" fill="#273B66" font-family="Segoe UI, Arial, sans-serif" font-size="35" font-weight="400">Effortless code copy management.</text>
+
+  <ellipse cx="604" cy="512" rx="298" ry="119" stroke="url(#ring)" stroke-width="7" opacity="0.92"/>
+  <ellipse cx="604" cy="512" rx="336" ry="136" stroke="url(#ring)" stroke-width="2" opacity="0.42"/>
+
+  <g transform="translate(164 414) rotate(-2)" filter="url(#cardShadow)">
+    <rect x="0" y="0" width="254" height="192" rx="24" fill="url(#glassBlue)" fill-opacity="0.74" stroke="#8BC9FF" stroke-opacity="0.55" stroke-width="3"/>
+    <rect x="15" y="16" width="224" height="160" rx="18" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.2"/>
+    <circle cx="33" cy="31" r="4.5" fill="#F89BA3"/>
+    <circle cx="50" cy="31" r="4.5" fill="#F2CF70"/>
+    <circle cx="67" cy="31" r="4.5" fill="#83DA9D"/>
+    <text x="35" y="67" fill="#F3FCFF" fill-opacity="0.9" font-family="Consolas, Courier New, monospace" font-size="26">REPO</text>
+    <rect x="36" y="98" width="82" height="8" rx="4" fill="#DFFFFF" fill-opacity="0.82"/>
+    <rect x="36" y="118" width="118" height="8" rx="4" fill="#C8F9FF" fill-opacity="0.72"/>
+    <rect x="36" y="138" width="92" height="8" rx="4" fill="#D7ECFF" fill-opacity="0.56"/>
+    <text x="36" y="164" fill="#E2F0FF" fill-opacity="0.68" font-family="Consolas, Courier New, monospace" font-size="20">&gt; _</text>
+  </g>
+
+  <g transform="translate(760 336) rotate(2)" filter="url(#cardShadow)">
+    <rect x="0" y="0" width="230" height="228" rx="24" fill="url(#glassPurple)" fill-opacity="0.75" stroke="#ABC7FF" stroke-opacity="0.58" stroke-width="3"/>
+    <rect x="15" y="16" width="200" height="196" rx="18" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.2"/>
+    <circle cx="33" cy="31" r="4.5" fill="#F89BA3"/>
+    <circle cx="50" cy="31" r="4.5" fill="#F2CF70"/>
+    <circle cx="67" cy="31" r="4.5" fill="#83DA9D"/>
+    <text x="32" y="68" fill="#F3FCFF" fill-opacity="0.9" font-family="Consolas, Courier New, monospace" font-size="28">REPO</text>
+    <text x="32" y="102" fill="#F7FBFF" fill-opacity="0.88" font-family="Consolas, Courier New, monospace" font-size="25">&gt; BRANCH A</text>
+    <text x="32" y="132" fill="#F7FBFF" fill-opacity="0.82" font-family="Consolas, Courier New, monospace" font-size="25">&gt; BRANCH B</text>
+    <text x="32" y="162" fill="#F7FBFF" fill-opacity="0.76" font-family="Consolas, Courier New, monospace" font-size="25">&gt; MAIN</text>
+  </g>
+
+  <g transform="translate(250 322) rotate(-6)" filter="url(#folderShadow)">
+    <path d="M14 45C14 28 27 15 44 15H78L96 31H136C153 31 166 44 166 61V127C166 144 153 157 136 157H44C27 157 14 144 14 127V45Z" fill="url(#folderBlue)" fill-opacity="0.82" stroke="#86CFFF" stroke-width="3"/>
+    <path d="M30 57C30 49 36 43 44 43H128C136 43 142 49 142 57V112C142 120 136 126 128 126H44C36 126 30 120 30 112V57Z" fill="#FFFFFF" fill-opacity="0.18"/>
+    <path d="M34 45H82L96 31H62C53 31 45 37 42 45H34Z" fill="#FFFFFF" fill-opacity="0.26"/>
+  </g>
+
+  <g transform="translate(486 430) rotate(5)" filter="url(#folderShadow)">
+    <path d="M12 43C12 26 25 13 42 13H78L96 28H136C153 28 166 41 166 58V126C166 143 153 156 136 156H42C25 156 12 143 12 126V43Z" fill="url(#folderPurple)" fill-opacity="0.84" stroke="#9AB5FF" stroke-width="3"/>
+    <path d="M28 56C28 48 34 42 42 42H128C136 42 142 48 142 56V111C142 119 136 125 128 125H42C34 125 28 119 28 111V56Z" fill="#FFFFFF" fill-opacity="0.18"/>
+    <path d="M32 43H82L96 28H61C52 28 44 34 40 43H32Z" fill="#FFFFFF" fill-opacity="0.28"/>
+  </g>
+
+  <g transform="translate(832 564) rotate(3)" filter="url(#folderShadow)">
+    <path d="M12 43C12 26 25 13 42 13H78L96 28H136C153 28 166 41 166 58V126C166 143 153 156 136 156H42C25 156 12 143 12 126V43Z" fill="url(#folderBlue)" fill-opacity="0.82" stroke="#8BC8FF" stroke-width="3"/>
+    <path d="M28 56C28 48 34 42 42 42H128C136 42 142 48 142 56V111C142 119 136 125 128 125H42C34 125 28 119 28 111V56Z" fill="#FFFFFF" fill-opacity="0.15"/>
+    <path d="M32 43H82L96 28H61C52 28 44 34 40 43H32Z" fill="#FFFFFF" fill-opacity="0.28"/>
+    <text x="46" y="98" fill="#F8FDFF" fill-opacity="0.9" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="500">CLI Tool</text>
+  </g>
+
+  <path d="M406 530C474 492 540 471 603 468C668 465 738 484 816 528" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="4" stroke-linecap="round"/>
+  <path d="M360 458C430 438 510 432 601 438C696 444 770 472 844 524" stroke="#FFFFFF" stroke-opacity="0.36" stroke-width="3" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest an improvement, workflow, or new capability.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Please explain the workflow pain clearly so the proposal can be evaluated quickly.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What workflow is awkward today?
+      placeholder: I keep multiple clones of the same repo and ...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like to see?
+      placeholder: Add a command or behavior that ...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What are you doing today as a workaround?
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Mockups, examples, or references that clarify the request.
