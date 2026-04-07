@@ -9,23 +9,28 @@ use walkdir::{DirEntry, WalkDir};
 use crate::core::{git, models::ProjectInstance};
 
 pub fn scan_repositories(paths: &[PathBuf]) -> Result<Vec<ProjectInstance>> {
-    scan_repositories_with_progress(paths, |_, _| {})
+    scan_repositories_with_progress(paths, &[], |_, _| {})
 }
 
 pub fn scan_repositories_with_progress<F>(
     paths: &[PathBuf],
+    filters: &[String],
     mut on_progress: F,
 ) -> Result<Vec<ProjectInstance>>
 where
     F: FnMut(&Path, usize),
 {
+    let filters = filters
+        .iter()
+        .map(|value| value.to_ascii_lowercase())
+        .collect::<HashSet<_>>();
     let mut found_paths = HashSet::new();
     let mut instances = Vec::new();
 
     for path in paths {
         let root_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
 
-        if let Some(instance) = build_project_instance(&root_path, &mut found_paths) {
+        if let Some(instance) = build_project_instance(&root_path, &filters, &mut found_paths) {
             on_progress(&root_path, instances.len());
             instances.push(instance);
             on_progress(&root_path, instances.len());
@@ -55,7 +60,8 @@ where
                 .canonicalize()
                 .unwrap_or_else(|_| dir_path.to_path_buf());
 
-            let Some(instance) = build_project_instance(&canonical, &mut found_paths) else {
+            let Some(instance) = build_project_instance(&canonical, &filters, &mut found_paths)
+            else {
                 continue;
             };
 
@@ -99,6 +105,7 @@ fn is_project_dir(path: &Path) -> bool {
 
 fn build_project_instance(
     canonical: &Path,
+    filters: &HashSet<String>,
     found_paths: &mut HashSet<PathBuf>,
 ) -> Option<ProjectInstance> {
     if !is_project_dir(canonical) || !found_paths.insert(canonical.to_path_buf()) {
@@ -119,6 +126,10 @@ fn build_project_instance(
     } else {
         dir_name
     };
+
+    if !filters.is_empty() && !filters.contains(&repo_name.to_ascii_lowercase()) {
+        return None;
+    }
 
     let branch = git::branch_name(canonical).ok();
     let clean_path = normalize_path(canonical);

@@ -98,6 +98,9 @@ The binary will be created at:
 # Scan one or more directories directly
 proj scan D:\code C:\work
 
+# Or search all local workspace clones by project name
+proj scan tiktok_live_studio
+
 # Open TUI picker (no command needed!)
 proj
 

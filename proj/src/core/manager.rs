@@ -13,6 +13,12 @@ pub struct ProjectManager {
     config: Config,
 }
 
+struct ScanRequest {
+    scan_roots: Vec<PathBuf>,
+    filters: Vec<String>,
+    remembered_roots: Vec<PathBuf>,
+}
+
 impl ProjectManager {
     pub fn load() -> Result<Self> {
         Ok(Self {
@@ -36,10 +42,14 @@ impl ProjectManager {
     where
         F: FnMut(&std::path::Path, usize),
     {
-        let scan_paths = self.resolve_scan_paths(&paths);
-        self.merge_scan_paths(&scan_paths);
+        let request = self.resolve_scan_request(&paths);
+        self.merge_scan_paths(&request.remembered_roots);
 
-        let mut instances = scanner::scan_repositories_with_progress(&scan_paths, on_progress)?;
+        let mut instances = scanner::scan_repositories_with_progress(
+            &request.scan_roots,
+            &request.filters,
+            on_progress,
+        )?;
         let checked_at = Utc::now();
 
         for instance in &mut instances {
@@ -128,25 +138,69 @@ Set-Alias -Name pl -Value projlist"#
         storage::save_config(&self.config)
     }
 
-    fn resolve_scan_paths(&self, paths: &[String]) -> Vec<PathBuf> {
-        let mut resolved = if !paths.is_empty() {
-            paths.iter().map(PathBuf::from).collect::<Vec<_>>()
-        } else if !self.config.scan_paths.is_empty() {
+    fn resolve_scan_request(&self, inputs: &[String]) -> ScanRequest {
+        let mut explicit_roots = Vec::new();
+        let mut filters = Vec::new();
+
+        for input in inputs {
+            if looks_like_scan_path(input) {
+                explicit_roots.push(PathBuf::from(input));
+            } else {
+                filters.push(input.clone());
+            }
+        }
+
+        let scan_roots = if !explicit_roots.is_empty() {
+            normalize_scan_roots(explicit_roots.clone())
+        } else if !filters.is_empty() {
+            self.search_roots()
+        } else {
+            self.default_scan_roots()
+        };
+
+        ScanRequest {
+            scan_roots,
+            filters,
+            remembered_roots: normalize_scan_roots(explicit_roots),
+        }
+    }
+
+    fn default_scan_roots(&self) -> Vec<PathBuf> {
+        let config_roots = self.configured_scan_roots();
+        if !config_roots.is_empty() {
+            return config_roots;
+        }
+
+        normalize_scan_roots(vec![
+            env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+        ])
+    }
+
+    fn search_roots(&self) -> Vec<PathBuf> {
+        let mut roots = self.configured_scan_roots();
+
+        roots.extend(discover_workspace_roots());
+
+        roots.push(env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+        normalize_scan_roots(roots)
+    }
+
+    fn configured_scan_roots(&self) -> Vec<PathBuf> {
+        normalize_scan_roots(
             self.config
                 .scan_paths
                 .iter()
                 .map(PathBuf::from)
-                .collect::<Vec<_>>()
-        } else {
-            vec![env::current_dir().unwrap_or_else(|_| PathBuf::from("."))]
-        };
-
-        resolved.sort();
-        resolved.dedup();
-        resolved
+                .filter(|path| path.exists())
+                .collect(),
+        )
     }
 
     fn merge_scan_paths(&mut self, scan_paths: &[PathBuf]) {
+        if scan_paths.is_empty() {
+            return;
+        }
+
         self.config.scan_paths.extend(
             scan_paths
                 .iter()
@@ -197,4 +251,53 @@ Set-Alias -Name pl -Value projlist"#
             }
         }
     }
+}
+
+fn discover_workspace_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    if let Ok(current_dir) = env::current_dir() {
+        for ancestor in current_dir.ancestors() {
+            if ancestor.file_name().and_then(|name| name.to_str()) == Some("workspace") {
+                roots.push(ancestor.to_path_buf());
+                break;
+            }
+        }
+    }
+
+    if let Some(home) = dirs::home_dir() {
+        let home_workspace = home.join("workspace");
+        if home_workspace.exists() {
+            roots.push(home_workspace);
+        }
+    }
+
+    normalize_scan_roots(roots)
+}
+
+fn normalize_scan_roots(paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut canonical_roots = paths
+        .into_iter()
+        .filter(|path| path.exists())
+        .map(|path| path.canonicalize().unwrap_or(path))
+        .collect::<Vec<_>>();
+
+    canonical_roots.sort();
+    canonical_roots.dedup();
+    canonical_roots.sort_by_key(|path| path.components().count());
+
+    let mut reduced = Vec::new();
+    for path in canonical_roots {
+        if reduced.iter().any(|root: &PathBuf| path.starts_with(root)) {
+            continue;
+        }
+        reduced.push(path);
+    }
+
+    reduced
+}
+
+fn looks_like_scan_path(input: &str) -> bool {
+    let candidate = PathBuf::from(input);
+    candidate.is_absolute() || input.starts_with('.') || input.contains('\\') || input.contains('/')
 }
