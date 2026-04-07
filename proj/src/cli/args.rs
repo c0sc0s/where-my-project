@@ -13,26 +13,13 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    Watch(WatchArgs),
     List(ListArgs),
     Scan(ScanArgs),
-    Alias(AliasArgs),
     Status(StatusArgs),
     Cd(CdArgs),
     Work(WorkArgs),
     Init,
     Version,
-}
-
-#[derive(Debug, Args)]
-pub struct WatchArgs {
-    pub repo_name: Option<String>,
-
-    #[arg(long)]
-    pub list: bool,
-
-    #[arg(long)]
-    pub remove: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -43,23 +30,11 @@ pub struct ListArgs {
 
 #[derive(Debug, Args)]
 pub struct ScanArgs {
-    #[arg(long, value_delimiter = ',')]
-    pub paths: Option<Vec<String>>,
-
-    #[arg(long, default_value = "true")]
-    pub auto_alias: bool,
+    #[arg(value_name = "PATH", value_delimiter = ',')]
+    pub paths: Vec<String>,
 
     #[arg(long)]
     pub tui: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct AliasArgs {
-    pub target: Option<String>,
-    pub alias_name: Option<String>,
-
-    #[arg(long)]
-    pub list: bool,
 }
 
 #[derive(Debug, Args)]
@@ -77,6 +52,6 @@ pub struct CdArgs {
 
 #[derive(Debug, Args)]
 pub struct WorkArgs {
-    /// Alias or index of the project to work in
+    /// Repository name, index, or full path of the project to work in
     pub target: String,
 }

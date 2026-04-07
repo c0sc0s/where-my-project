@@ -18,11 +18,10 @@ pub fn run(args: WorkArgs) -> Result<()> {
         .map(|s| s.instance);
 
     if let Some(inst) = instance {
-        let alias = inst.alias.as_deref().unwrap_or("-");
         eprintln!(
             "{} {}  {}",
             "▶ Working in:".cyan().bold(),
-            alias.yellow(),
+            inst.repo_name.yellow(),
             inst.path.dimmed()
         );
     }

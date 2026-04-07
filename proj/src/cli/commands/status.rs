@@ -50,7 +50,6 @@ fn print_status_table(statuses: &[InstanceStatus]) {
     table.set_content_arrangement(ContentArrangement::Dynamic);
     table.set_header(vec![
         Cell::new("#").fg(TableColor::Cyan),
-        Cell::new("Alias").fg(TableColor::Cyan),
         Cell::new("Repository").fg(TableColor::Cyan),
         Cell::new("Branch").fg(TableColor::Cyan),
         Cell::new("Status").fg(TableColor::Cyan),
@@ -58,7 +57,6 @@ fn print_status_table(statuses: &[InstanceStatus]) {
     ]);
 
     for (idx, status) in statuses.iter().enumerate() {
-        let alias = status.instance.alias.as_deref().unwrap_or("-");
         let repo = &status.instance.repo_name;
         let branch = &status.git_status.branch;
 
@@ -84,7 +82,6 @@ fn print_status_table(statuses: &[InstanceStatus]) {
 
         table.add_row(vec![
             Cell::new(idx + 1).fg(TableColor::DarkGrey),
-            Cell::new(alias).fg(TableColor::Yellow),
             Cell::new(repo),
             Cell::new(branch).fg(TableColor::Magenta),
             Cell::new(status_str),
@@ -102,11 +99,6 @@ fn print_single_status(status: &InstanceStatus) {
         status.instance.repo_name
     );
     println!("{} {}", "Path:".cyan().bold(), status.instance.path);
-    println!(
-        "{} {}",
-        "Alias:".cyan().bold(),
-        status.instance.alias.as_deref().unwrap_or("-")
-    );
     println!(
         "{} {}",
         "Branch:".cyan().bold(),

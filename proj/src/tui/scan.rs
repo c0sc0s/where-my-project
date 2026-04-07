@@ -1,16 +1,10 @@
-use std::{
-    io::{self, Write},
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
 use walkdir::{DirEntry, WalkDir};
 
-use crate::{
-    cli::args::ScanArgs,
-    core::{manager::ProjectManager, models::ProjectInstance},
-};
+use crate::{cli::args::ScanArgs, core::manager::ProjectManager};
 
 pub fn run(args: ScanArgs) -> Result<()> {
     let mut manager = ProjectManager::load()?;
@@ -25,7 +19,7 @@ pub fn run(args: ScanArgs) -> Result<()> {
         .progress_chars("##-"),
     );
 
-    let scan_result = manager.scan_with_progress(args.paths, args.auto_alias, |path, found| {
+    let scan_result = manager.scan_with_progress(args.paths.clone(), |path, found| {
         progress.set_position((progress.position() + 1).min(progress.length().unwrap_or(1)));
         progress.set_message(format!("{} | {}", found, shorten_path(path)));
     });
@@ -39,44 +33,11 @@ pub fn run(args: ScanArgs) -> Result<()> {
     }
 
     println!("Scanned {} repos.", instances.len());
-    prompt_for_aliases(&mut manager, &instances)?;
     Ok(())
 }
 
-fn prompt_for_aliases(manager: &mut ProjectManager, instances: &[ProjectInstance]) -> Result<()> {
-    let mut stdout = io::stdout();
-    let stdin = io::stdin();
-
-    for (index, instance) in instances.iter().enumerate() {
-        if instance.alias.is_some() {
-            continue;
-        }
-
-        writeln!(
-            stdout,
-            "[{}] {} ({})",
-            index + 1,
-            instance.repo_name,
-            instance.path
-        )?;
-        write!(stdout, "Alias (leave empty to skip): ")?;
-        stdout.flush()?;
-
-        let mut input = String::new();
-        stdin.read_line(&mut input)?;
-        let alias = input.trim();
-        if alias.is_empty() {
-            continue;
-        }
-
-        manager.set_alias(&instance.path, alias.to_string())?;
-    }
-
-    Ok(())
-}
-
-fn resolve_scan_paths(manager: &ProjectManager, paths: Option<Vec<String>>) -> Vec<PathBuf> {
-    if let Some(paths) = paths {
+fn resolve_scan_paths(manager: &ProjectManager, paths: Vec<String>) -> Vec<PathBuf> {
+    if !paths.is_empty() {
         return paths.into_iter().map(PathBuf::from).collect();
     }
 

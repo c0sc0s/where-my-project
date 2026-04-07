@@ -4,17 +4,13 @@
 
 It helps you:
 
-- watch repository names you care about
-- scan directories for matching clones
-- assign stable aliases
+- scan directories for projects you care about
 - inspect Git status across clones
 - jump into a selected clone from PowerShell
 
 ## Features
 
-- `proj watch`: manage watched repository names
-- `proj scan`: scan directories and persist discovered clones
-- `proj alias`: assign aliases to discovered projects
+- `proj scan <path>`: scan directories directly and persist discovered projects
 - `proj status`: inspect one or all tracked clones
 - `proj list`: interactive TUI picker
 - `proj cd`: print a resolved path for shell integration
@@ -99,8 +95,8 @@ The binary will be created at:
 **Quick Start:**
 
 ```powershell
-# Scan and auto-generate smart aliases (parent-dir + repo-name)
-proj scan --paths D:\code,C:\work --auto-alias
+# Scan one or more directories directly
+proj scan D:\code C:\work
 
 # Open TUI picker (no command needed!)
 proj
@@ -112,16 +108,17 @@ pl
 **Jump to projects:**
 
 ```powershell
-pcd work-myrepo    # by alias
+pcd my-repo        # by repository name when unique
 pcd 1              # by index
+pcd C:\work\my-repo # by full path
 ```
 
 **Other commands:**
 
 ```powershell
-proj watch <repo>  # Watch specific repos
 proj status        # Show all projects
-proj alias 1 name  # Set custom alias
+proj status my-repo
+proj cd 1 --raw
 ```
 
 ## Release

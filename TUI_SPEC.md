@@ -14,7 +14,7 @@
   - q/Esc：退出
   - r：刷新 git 状态
   - d：删除选中项目（需确认）
-- 显示信息：alias、branch、状态（clean/dirty）、路径
+- 显示信息：repository、branch、状态（clean/dirty）、路径
 - 选中行高亮显示
 
 ### 2. `proj scan` - 带进度条的扫描
@@ -23,7 +23,6 @@
 - 扫描完成后：
   - 显示结果表格
   - 提示是否保存到列表
-  - 支持交互式设置 alias
 
 ### 3. `proj tui` - 完整 TUI 仪表盘（可选）
 - 左侧：项目列表
@@ -71,7 +70,7 @@ src/
 - 选中行：蓝色背景
 - Clean 状态：绿色
 - Dirty 状态：红色
-- Alias：黄色
+- Repository：黄色
 - Branch：洋红
 - 路径：灰色
 

@@ -86,7 +86,7 @@ fn draw(frame: &mut Frame, app: &mut App) {
         let rows = app.filtered_rows();
         let table = Table::new(rows)
             .header(
-                Row::new(["Alias", "Branch", "Path"]).style(
+                Row::new(["Repository", "Branch", "Path"]).style(
                     Style::default()
                         .fg(Color::Cyan)
                         .add_modifier(Modifier::BOLD),
@@ -109,12 +109,14 @@ fn draw(frame: &mut Frame, app: &mut App) {
     }
 
     let footer_text = if let Some(path) = app.selected_path() {
-        format!("↑/↓ move  Enter select  / search  r refresh  q/Esc quit\n{}", path)
+        format!(
+            "↑/↓ move  Enter select  / search  r refresh  q/Esc quit\n{}",
+            path
+        )
     } else {
         "↑/↓ move  Enter select  / search  r refresh  q/Esc quit".to_string()
     };
-    let footer = Paragraph::new(footer_text)
-        .block(Block::default().borders(Borders::ALL));
+    let footer = Paragraph::new(footer_text).block(Block::default().borders(Borders::ALL));
     frame.render_widget(footer, chunks[2]);
 
     if app.filter_mode {
@@ -146,14 +148,6 @@ fn centered_rect(width_percent: u16, height: u16, area: Rect) -> Rect {
         .split(vertical[1])[1]
 }
 
-fn shorten_path_from_end(path: &str, max_len: usize) -> String {
-    if path.len() <= max_len {
-        return path.to_string();
-    }
-    let skip = path.len() - (max_len - 3);
-    format!("...{}", &path[skip..])
-}
-
 fn find_common_prefix(paths: &[&str]) -> String {
     if paths.is_empty() {
         return String::new();
@@ -182,31 +176,6 @@ fn find_common_prefix(paths: &[&str]) -> String {
     } else {
         String::new()
     }
-}
-
-fn truncate(value: &str, max_chars: usize) -> String {
-    if value.len() <= max_chars {
-        return value.to_string();
-    }
-    format!("...{}", &value[value.len().saturating_sub(max_chars - 3)..])
-}
-
-fn format_status(status: &InstanceStatus) -> String {
-    if status.git_status.is_clean {
-        return "clean".to_string();
-    }
-
-    let mut parts = Vec::new();
-    if status.git_status.modified_count > 0 {
-        parts.push(format!("M{}", status.git_status.modified_count));
-    }
-    if status.git_status.untracked_count > 0 {
-        parts.push(format!("?{}", status.git_status.untracked_count));
-    }
-    if status.git_status.ahead_count > 0 {
-        parts.push(format!("↑{}", status.git_status.ahead_count));
-    }
-    parts.join(" ")
 }
 
 fn setup_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
@@ -295,7 +264,8 @@ impl App {
     }
 
     fn filtered_rows(&self) -> Vec<Row<'static>> {
-        let paths: Vec<&str> = self.filtered
+        let paths: Vec<&str> = self
+            .filtered
             .iter()
             .filter_map(|index| self.statuses.get(*index))
             .map(|s| s.instance.path.as_str())
@@ -307,16 +277,20 @@ impl App {
             .iter()
             .filter_map(|index| self.statuses.get(*index))
             .map(|status| {
-                let alias = status.instance.alias.as_deref().unwrap_or("-");
                 let branch = status.git_status.branch.as_str();
                 let path = if common_prefix.is_empty() {
                     status.instance.path.clone()
                 } else {
-                    format!("~/{}", &status.instance.path[common_prefix.len()..].trim_start_matches('\\').trim_start_matches('/'))
+                    format!(
+                        "~/{}",
+                        &status.instance.path[common_prefix.len()..]
+                            .trim_start_matches('\\')
+                            .trim_start_matches('/')
+                    )
                 };
 
                 Row::new(vec![
-                    Cell::from(alias.to_string()),
+                    Cell::from(status.instance.repo_name.clone()),
                     Cell::from(branch.to_string()),
                     Cell::from(path),
                 ])
@@ -353,15 +327,9 @@ fn matches_filter(status: &InstanceStatus, needle: &str) -> bool {
         return true;
     }
 
-    let alias = status.instance.alias.as_deref().unwrap_or_default();
     let branch = status.git_status.branch.as_str();
 
-    [
-        alias,
-        &status.instance.repo_name,
-        branch,
-        &status.instance.path,
-    ]
-    .iter()
-    .any(|value| value.to_lowercase().contains(needle))
+    [&status.instance.repo_name, branch, &status.instance.path]
+        .iter()
+        .any(|value| value.to_lowercase().contains(needle))
 }

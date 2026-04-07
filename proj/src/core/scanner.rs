@@ -8,22 +8,17 @@ use walkdir::{DirEntry, WalkDir};
 
 use crate::core::{git, models::ProjectInstance};
 
-pub fn scan_repositories(
-    paths: &[PathBuf],
-    watched_repos: &[String],
-) -> Result<Vec<ProjectInstance>> {
-    scan_repositories_with_progress(paths, watched_repos, |_, _| {})
+pub fn scan_repositories(paths: &[PathBuf]) -> Result<Vec<ProjectInstance>> {
+    scan_repositories_with_progress(paths, |_, _| {})
 }
 
 pub fn scan_repositories_with_progress<F>(
     paths: &[PathBuf],
-    watched_repos: &[String],
     mut on_progress: F,
 ) -> Result<Vec<ProjectInstance>>
 where
     F: FnMut(&Path, usize),
 {
-    let watched: HashSet<&str> = watched_repos.iter().map(String::as_str).collect();
     let mut found_paths = HashSet::new();
     let mut instances = Vec::new();
 
@@ -46,7 +41,9 @@ where
             }
 
             let dir_path = entry.path();
-            let canonical = dir_path.canonicalize().unwrap_or_else(|_| dir_path.to_path_buf());
+            let canonical = dir_path
+                .canonicalize()
+                .unwrap_or_else(|_| dir_path.to_path_buf());
 
             if !found_paths.insert(canonical.clone()) {
                 continue;
@@ -66,10 +63,6 @@ where
             } else {
                 dir_name
             };
-
-            if !watched.is_empty() && !watched.contains(repo_name.as_str()) {
-                continue;
-            }
 
             let branch = git::branch_name(&canonical).ok();
             let clean_path = normalize_path(&canonical);

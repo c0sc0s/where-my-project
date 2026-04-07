@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub version: u32,
+    #[serde(default)]
     pub watched_repos: Vec<String>,
     pub scan_paths: Vec<String>,
     pub instances: Vec<ProjectInstance>,
@@ -12,7 +13,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            version: 1,
+            version: 2,
             watched_repos: Vec::new(),
             scan_paths: Vec::new(),
             instances: Vec::new(),
@@ -24,6 +25,7 @@ impl Default for Config {
 pub struct ProjectInstance {
     pub repo_name: String,
     pub path: String,
+    #[serde(default)]
     pub alias: Option<String>,
     pub last_branch: Option<String>,
     pub last_check: Option<DateTime<Utc>>,
