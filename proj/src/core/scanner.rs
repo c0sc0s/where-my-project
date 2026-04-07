@@ -23,58 +23,45 @@ where
     let mut instances = Vec::new();
 
     for path in paths {
-        for entry in WalkDir::new(path)
+        let root_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+
+        if let Some(instance) = build_project_instance(&root_path, &mut found_paths) {
+            on_progress(&root_path, instances.len());
+            instances.push(instance);
+            on_progress(&root_path, instances.len());
+            continue;
+        }
+
+        let mut walker = WalkDir::new(path)
             .max_depth(20)
             .follow_links(false)
             .into_iter()
-            .filter_entry(|entry| should_enter(entry))
-            .filter_map(|entry| entry.ok())
-        {
+            .filter_entry(|entry| should_enter(entry));
+
+        while let Some(entry) = walker.next() {
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(_) => continue,
+            };
+
             if !entry.file_type().is_dir() {
                 continue;
             }
 
             on_progress(entry.path(), instances.len());
 
-            if !is_project_dir(&entry) {
-                continue;
-            }
-
             let dir_path = entry.path();
             let canonical = dir_path
                 .canonicalize()
                 .unwrap_or_else(|_| dir_path.to_path_buf());
 
-            if !found_paths.insert(canonical.clone()) {
+            let Some(instance) = build_project_instance(&canonical, &mut found_paths) else {
                 continue;
-            }
-
-            let dir_name = canonical
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("unknown")
-                .to_string();
-
-            // For git worktrees, .git is a file pointing back to the main repo.
-            // The folder name differs from the actual repo name, so we must resolve it.
-            let is_worktree = canonical.join(".git").is_file();
-            let repo_name = if is_worktree {
-                git::repo_name(&canonical).unwrap_or_else(|_| dir_name.clone())
-            } else {
-                dir_name
             };
 
-            let branch = git::branch_name(&canonical).ok();
-            let clean_path = normalize_path(&canonical);
-
-            instances.push(ProjectInstance {
-                repo_name,
-                path: clean_path,
-                alias: None,
-                last_branch: branch,
-                last_check: None,
-            });
+            instances.push(instance);
             on_progress(&canonical, instances.len());
+            walker.skip_current_dir();
         }
     }
 
@@ -84,33 +71,65 @@ where
 
 fn should_enter(entry: &DirEntry) -> bool {
     let name = entry.file_name().to_str().unwrap_or("");
-    name != ".git" && name != "node_modules" && name != "target" && name != ".next"
+    !matches!(
+        name,
+        ".git" | "node_modules" | "target" | ".next" | "dist" | "dist_sec" | "build" | "release"
+    )
 }
 
-fn is_project_dir(entry: &DirEntry) -> bool {
-    let path = entry.path();
-
-    // 有 .git 的是项目
+fn is_project_dir(path: &Path) -> bool {
     if path.join(".git").exists() {
         return true;
     }
 
-    // 有 package.json 的是项目
     if path.join("package.json").exists() {
         return true;
     }
 
-    // 有 Cargo.toml 的是项目
     if path.join("Cargo.toml").exists() {
         return true;
     }
 
-    // 有 go.mod 的是项目
     if path.join("go.mod").exists() {
         return true;
     }
 
     false
+}
+
+fn build_project_instance(
+    canonical: &Path,
+    found_paths: &mut HashSet<PathBuf>,
+) -> Option<ProjectInstance> {
+    if !is_project_dir(canonical) || !found_paths.insert(canonical.to_path_buf()) {
+        return None;
+    }
+
+    let dir_name = canonical
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    // For git worktrees, .git is a file pointing back to the main repo.
+    // The folder name differs from the actual repo name, so we must resolve it.
+    let is_worktree = canonical.join(".git").is_file();
+    let repo_name = if is_worktree {
+        git::repo_name(canonical).unwrap_or_else(|_| dir_name.clone())
+    } else {
+        dir_name
+    };
+
+    let branch = git::branch_name(canonical).ok();
+    let clean_path = normalize_path(canonical);
+
+    Some(ProjectInstance {
+        repo_name,
+        path: clean_path,
+        alias: None,
+        last_branch: branch,
+        last_check: None,
+    })
 }
 
 fn normalize_path(path: &Path) -> String {
