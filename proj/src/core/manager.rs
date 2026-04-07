@@ -56,7 +56,7 @@ impl ProjectManager {
             instance.last_check = Some(checked_at);
         }
 
-        self.config.instances = instances.clone();
+        self.merge_instances(&instances);
         self.save()?;
         Ok(instances)
     }
@@ -209,6 +209,26 @@ Set-Alias -Name pl -Value projlist"#
         );
         self.config.scan_paths.sort();
         self.config.scan_paths.dedup();
+    }
+
+    fn merge_instances(&mut self, discovered: &[ProjectInstance]) {
+        for instance in discovered {
+            if let Some(existing) = self
+                .config
+                .instances
+                .iter_mut()
+                .find(|current| current.path == instance.path)
+            {
+                *existing = instance.clone();
+                continue;
+            }
+
+            self.config.instances.push(instance.clone());
+        }
+
+        self.config
+            .instances
+            .sort_by(|left, right| left.path.cmp(&right.path));
     }
 
     fn resolve_instance_index(&self, target: &str) -> Result<usize> {
